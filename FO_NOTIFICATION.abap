@@ -1,9 +1,9 @@
 *&---------------------------------------------------------------------*
-*& Report Z_FO_NOTIFICATION
+*& Report /TENR/FO_NOTIFICATION
 *&---------------------------------------------------------------------*
 *&
 *&---------------------------------------------------------------------*
-REPORT z_fo_notification.
+REPORT /tenr/fo_notification.
 
 TABLES: /scmtms/d_torrot, bkpf.
 
@@ -147,6 +147,7 @@ START-OF-SELECTION.
             ls_vlcomsgt-zoperation = 'C'.
           ENDIF.
 
+          ls_output-send_freight_order-freight_order-werehaouse = CONV char4( |{ ls_tmymspl1-zlgort }| ).
           ls_output-send_freight_order-freight_order-consignee = CONV char10( |{ ls_tmymspl1-consignee_id }| ).
           ls_output-send_freight_order-freight_order-consignee_desc = CONV char40( |{ ls_tmymspl1-consignee_descr }| ).
           ls_output-send_freight_order-freight_order-operation = CONV char1( |{ ls_vlcomsgt-zoperation }| ).
