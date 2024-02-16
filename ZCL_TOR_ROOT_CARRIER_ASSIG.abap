@@ -7,8 +7,8 @@
           ls_tmymspl  TYPE /tenr/t_tmymspl1,
           lt_tmymspl  TYPE TABLE OF /tenr/t_tmymspl1,
           lo_proxy    TYPE REF TO /tenr/co_ws_oa_send_freight_or,
-          ls_output   TYPE /tenr/ws_send_freight_order1.
-*          lt_key     TYPE /bobf/t_frw_key,
+          ls_output   TYPE /tenr/ws_send_freight_order1,
+          lt_key      TYPE /bobf/t_frw_key.
 *          lo_srv_tor TYPE REF TO /bobf/if_tra_service_manager.
 
 **    lo_srv_tor = /bobf/cl_tra_serv_mgr_factory=>get_service_manager( /scmtms/if_tor_c=>sc_bo_key ).
@@ -107,42 +107,39 @@
         ENDLOOP.
       ENDIF.
 
-*    "ESCENARIO DE SICRAM
 
-
-**  Para el envío Cuando sea modificado el Carrier en la FO SCMTMS/D_TORROT-TSPID
-**  El TSPID anterior no debe de venir vacío
-*    IF ( NOT ls_root_bef-tspid IS INITIAL
-*    AND ls_root_bef-tspid NE ls_root-tspid ).
-*      CALL FUNCTION '/TENR/FM_INT_SICRAM_OUT'
-*        EXPORTING
-*          i_tor_key  = it_key
-*          i_upd_flag = 'U'.
-*    ENDIF.
-**  Para el envío Cuando SCMTMS/D_TORROT-CONFIRMATION = '04'
-      DATA it_key_sicram TYPE /bobf/t_frw_key.
-
+      "Envio de datos a SICRAM.
       LOOP AT lt_root INTO ls_root.
         TRY.
-*          DATA(ls_root) = lt_root[ 1 ].
             ls_root_bef = lt_root_bef[ key = ls_root-key ].
 
-            "IF ls_root_bef-tspid NE ls_root-tspid
-            IF ls_root_bef-confirmation NE ls_root-confirmation.
-              IF ( ( ls_root_bef-confirmation = '01' OR ls_root_bef-confirmation = '06' OR ls_root_bef-confirmation = '10' ) AND ls_root-confirmation = '04' OR ls_root-confirmation = '06' ).
-*              OR ( ls_root_bef-confirmation = '04' AND ls_root-confirmation = '10' ).
-                "AND ( ls_root_bef-confirmation NE ls_root-confirmation ).
-                it_key_sicram = VALUE #( ( key = ls_root-key ) ).
-*              SET UPDATE TASK LOCAL.
-                CALL FUNCTION '/TENR/FM_INT_SICRAM_OUT'
+            SELECT SINGLE * FROM /tenr/t_comunyms
+              INTO @DATA(ls_comunyms)
+              WHERE tor_type EQ @ls_root-tor_type
+                AND blk_plan EQ @ls_root-blk_plan
+                AND subcontracting EQ @ls_root-subcontracting
+                AND confirmation   EQ @ls_root-confirmation.
+
+            IF sy-subrc EQ 0.
+
+              IF ls_root_bef-confirmation NE ls_root-confirmation AND ls_root-lifecycle NE '10'.
+
+                lt_key = VALUE #( ( key = ls_root-key ) ).
+                SET UPDATE TASK LOCAL.
+                CALL FUNCTION '/TENR/FM_INT_SICRAM_OUT' STARTING NEW TASK '/TENR/FM_INT_SICRAM_OUT'
                   EXPORTING
-                    i_tor_key  = it_key_sicram
+                    i_tor_key  = lt_key
                     i_upd_flag = 'I'.
+
+                REFRESH: lt_key.
+
               ENDIF.
+
             ENDIF.
+
           CATCH cx_sy_itab_line_not_found.
         ENDTRY.
       ENDLOOP.
-    ENDIF.
 
+    ENDIF.
   ENDMETHOD.
