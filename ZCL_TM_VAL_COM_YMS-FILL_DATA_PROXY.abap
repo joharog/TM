@@ -30,7 +30,8 @@
 
 
     DATA: lv_sales_order TYPE char35.
-    DATA: status_d TYPE char1.
+    DATA: status_d  TYPE char1,
+          fo_status TYPE char1.
     DATA: lt_proxy TYPE /tenr/t_tmcomunyms_in.
 
 
@@ -51,6 +52,7 @@
     ENDTRY.
 
     IMPORT status_d = status_d FROM MEMORY ID 'STATUS_D'.   "status_d memory id from ZCL_DELETE_METHODS->CANCEL_CAPA_TOR
+    IMPORT fo_status = fo_status FROM MEMORY ID 'FO_STATUS'. "Envio desde /TENR/FO_NOTIFICATION_STATUS
 
     REFRESH lt_tmymspl1.
 
@@ -90,8 +92,10 @@
 
     IF lt_tmymspl1 IS NOT INITIAL.
       DATA(ls_tmymspl1) = lt_tmymspl1[ 1 ].
-      IF ls_tmymspl1-zstatus = '01'.
-        EXIT.
+      IF fo_status IS INITIAL.
+        IF ls_tmymspl1-zstatus = '01'.
+          EXIT.
+        ENDIF.
       ENDIF.
 
     ELSE. "Cancela proceso de borrado si no existe registro de creacion en lt_tmymspl1
@@ -111,7 +115,7 @@
                                       ELSE '' )
                                       "VALUE #( gt_docref_data[ parent_key = ls_item-orig_ref_root ]-btd_tco DEFAULT '' )
                             btditem_id  = COND #( WHEN VALUE #( gt_rig[ parent_key = ls_item-orig_ref_root ]-net_invoicing DEFAULT '' ) IS NOT INITIAL
-                                          THEN |{  VALUE #( gt_docref_data[ parent_key = ls_item-orig_ref_root ]-btditem_id DEFAULT '' ) ALPHA = OUT }|  "gv_btditem_id "AD. SB 01.09.23
+                                          THEN |{ CONV char6( |{ VALUE #( gt_docref_data[ parent_key = ls_item-orig_ref_root ]-btditem_id DEFAULT '' ) ALPHA = OUT }| ) ALPHA = IN }| "gv_btditem_id "AD. SB 01.09.23
                                           ELSE '' )
                                           "|{ VALUE #( gt_docref_data[ parent_key = ls_item-orig_ref_root ]-btditem_id DEFAULT '' ) ALPHA = OUT }|
                             execution         = ls_item-execution "AD. SB 01.09.23
@@ -306,7 +310,7 @@
 *                                       ELSE 'TTS4' ).  " ls_tmymspl-zlgort.
         <lfs_proxy>-plant = ls_tmymspl-zwerks. "'TTS4'.
         <lfs_proxy>-sales_order = |{ CONV vbeln( |{ ls_tmymspl-sales_order ALPHA = OUT  }| ) ALPHA = IN }| .
-        <lfs_proxy>-sales_order_item = |{ CONV char4( |{ ls_tmymspl-sales_order_item ALPHA = OUT  }| ) ALPHA = IN }|.
+        <lfs_proxy>-sales_order_item = |{ CONV char6( |{ ls_tmymspl-sales_order_item ALPHA = OUT  }| ) ALPHA = IN }|.
         <lfs_proxy>-werehaouse = ls_tmymspl-zlgort. "'TTS4'
         <lfs_proxy>-carrier = ls_tmymspl-tspid.
         <lfs_proxy>-name = ls_vlcomsgt-name.
